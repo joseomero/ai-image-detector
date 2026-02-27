@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Image Detector — Copyleaks</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f0f13;
+      color: #e8e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 36px;
+    }
+
+    /* ── Auth Card ── */
+    .auth-card {
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      border-radius: 14px;
+      padding: 28px 32px;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 28px;
+    }
+
+    /* ── Auth Tabs ── */
+    .auth-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      background: #0f0f13;
+      border-radius: 8px;
+      padding: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      color: #666;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.84rem;
+    }
+
+    .tab-btn.active {
+      background: #2a2a38;
+      color: #e8e8f0;
+    }
+
+    .tab-btn:hover:not(.active) { color: #aaa; }
+
+    .auth-card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+      color: #c0c0d8;
+    }
+
+    .field-row {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .field-row label {
+      font-size: 0.78rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .field-row input {
+      background: #0f0f13;
+      border: 1px solid #2a2a38;
+      border-radius: 8px;
+      color: #e8e8f0;
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field-row input:focus { border-color: #6c63ff; }
+
+    .sandbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      font-size: 0.88rem;
+      color: #aaa;
+    }
+
+    .sandbox-row input[type="checkbox"] { accent-color: #6c63ff; width: 16px; height: 16px; cursor: pointer; }
+    .sandbox-row--spaced { margin-top: 16px; }
+    .tab-panel--hidden { display: none; }
+
+    .tag-sandbox {
+      background: #2a2a38;
+      color: #aaa;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 4px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 11px 22px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary { background: #6c63ff; color: #fff; width: 100%; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+
+    .token-status {
+      margin-top: 12px;
+      font-size: 0.82rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .token-status.ok   { background: #1a2e1a; color: #6fcf6f; display: block; }
+    .token-status.err  { background: #2e1a1a; color: #cf6f6f; display: block; }
+
+    /* ── Drop Zone ── */
+    .dropzone {
+      width: 100%;
+      max-width: 480px;
+      border: 2px dashed #2a2a38;
+      border-radius: 14px;
+      padding: 48px 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.25s, background 0.25s;
+      position: relative;
+      margin-bottom: 28px;
+    }
+
+    .dropzone.drag-over {
+      border-color: #6c63ff;
+      background: rgba(108, 99, 255, 0.06);
+    }
+
+    .dropzone .icon {
+      font-size: 2.8rem;
+      margin-bottom: 14px;
+    }
+
+    .dropzone p {
+      color: #888;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .dropzone strong { color: #c0c0d8; }
+
+    .dropzone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+
+    .file-formats {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: #555;
+    }
+
+    /* ── Results ── */
+    .results-area {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .result-card {
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .result-header {
+      padding: 16px 22px;
+      border-bottom: 1px solid #2a2a38;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .result-filename {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #c0c0d8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 260px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+
+    .badge-ai     { background: rgba(239, 68, 68, 0.18);  color: #ef4444; }
+    .badge-human  { background: rgba(34, 197, 94, 0.18);  color: #22c55e; }
+    .badge-mixed  { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+    .badge-loading { background: #2a2a38; color: #888; }
+    .badge-error   { background: rgba(239,68,68,0.18); color: #ef4444; }
+
+    .result-body {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* canvas container */
+    .canvas-container {
+      position: relative;
+      display: inline-block;
+      border-radius: 10px;
+      overflow: hidden;
+      max-width: 100%;
+      align-self: flex-start;
+    }
+
+    .canvas-container canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Summary bars */
+    .summary-section h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .bar-label {
+      font-size: 0.82rem;
+      color: #aaa;
+      width: 90px;
+      flex-shrink: 0;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 8px;
+      background: #2a2a38;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.8s cubic-bezier(.4,0,.2,1);
+    }
+
+    .bar-fill.ai    { background: #ef4444; }
+    .bar-fill.human { background: #22c55e; }
+
+    .bar-pct {
+      font-size: 0.82rem;
+      font-weight: 600;
+      width: 44px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .bar-pct.ai    { color: #ef4444; }
+    .bar-pct.human { color: #22c55e; }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legend-dot.ai    { background: rgba(239, 68, 68, 0.6); }
+    .legend-dot.human { background: transparent; border: 1px solid #444; }
+
+    .meta-row {
+      font-size: 0.78rem;
+      color: #555;
+    }
+
+    .spinner {
+      border: 3px solid #2a2a38;
+      border-top-color: #6c63ff;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      animation: spin 0.7s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      color: #ef4444;
+      font-size: 0.85rem;
+      padding: 12px 0;
+    }
+
+    .toggle-overlay {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: #aaa;
+      cursor: pointer;
+      user-select: none;
+      align-self: flex-start;
+    }
+
+    .toggle-overlay input { accent-color: #6c63ff; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <h1>AI Image Detector</h1>
+  <p class="subtitle">Powered by Copyleaks · Detect AI-generated pixels in any image</p>
+
+  <!-- Auth -->
+  <div class="auth-card">
+    <h2>Server Credentials</h2>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button type="button" class="tab-btn active" onclick="switchTab('token')">Paste Token</button>
+      <button type="button" class="tab-btn" onclick="switchTab('login')">Email + API Key</button>
+    </div>
+
+    <!-- Token tab -->
+    <div id="tab-token" class="tab-panel">
+      <div class="field-row">
+        <div>
+          <label>Bearer Token</label>
+          <input id="tokenInput" type="password" placeholder="Paste your Copyleaks bearer token" />
+        </div>
+      </div>
+      <button type="button" class="btn-primary" id="saveTokenBtn" onclick="saveToken()">Save Token to Server</button>
+    </div>
+
+    <!-- Login tab -->
+    <div id="tab-login" class="tab-panel tab-panel--hidden">
+      <div class="field-row">
+        <div>
+          <label>Email</label>
+          <input id="emailInput" type="email" placeholder="your@email.com" />
+        </div>
+        <div>
+          <label>API Key</label>
+          <input id="apiKeyInput" type="password" placeholder="••••••••••••••••" />
+        </div>
+      </div>
+      <button type="button" class="btn-primary" id="loginBtn" onclick="doLogin()">Authenticate via Server</button>
+    </div>
+
+    <div class="sandbox-row sandbox-row--spaced">
+      <input type="checkbox" id="sandboxCheck" checked />
+      <label for="sandboxCheck">Sandbox mode <span class="tag-sandbox">free · mock results</span></label>
+    </div>
+    <div class="token-status" id="tokenStatus"></div>
+  </div>
+
+  <!-- Drop zone -->
+  <div class="dropzone" id="dropzone">
+    <div class="icon">🖼️</div>
+    <p><strong>Drag &amp; drop images here</strong><br />or click to browse</p>
+    <p class="file-formats">PNG · JPG · JPEG · BMP · WebP · HEIC · HEIF &nbsp;·&nbsp; Max 32 MB · Min 512×512 px</p>
+    <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.bmp,.webp,.heic,.heif" multiple />
+  </div>
+
+  <!-- Results -->
+  <div class="results-area" id="resultsArea"></div>
+
+  <script>
+    // ── Tab switching ──────────────────────────────────────────────────────
+    function switchTab(tab) {
+      document.getElementById('tab-token').classList.toggle('tab-panel--hidden', tab !== 'token');
+      document.getElementById('tab-login').classList.toggle('tab-panel--hidden', tab !== 'login');
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', (i === 0 && tab === 'token') || (i === 1 && tab === 'login'));
+      });
+    }
+
+    // ── Check server token status on load ─────────────────────────────────
+    async function checkServerStatus() {
+      try {
+        const res  = await fetch('/api/status');
+        const data = await res.json();
+        if (data.tokenSet) showStatus('✓ Server token ready — you can scan images', 'ok');
+      } catch { /* server not running yet */ }
+    }
+    checkServerStatus();
+
+    // ── Save a pre-obtained bearer token to the server ─────────────────────
+    async function saveToken() {
+      const token = document.getElementById('tokenInput').value.trim();
+      const btn   = document.getElementById('saveTokenBtn');
+      if (!token) { showStatus('Please paste a bearer token.', 'err'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        const res = await fetch('/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        document.getElementById('tokenInput').value = '';
+        showStatus('✓ Token stored server-side — ready to scan', 'ok');
+      } catch (e) {
+        showStatus(`Failed: ${e.message}`, 'err');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Token to Server';
+      }
+    }
+
+    // ── Authenticate via server (email + key) ─────────────────────────────
+    async function doLogin() {
+      const email  = document.getElementById('emailInput').value.trim();
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
+      const btn    = document.getElementById('loginBtn');
+      if (!email || !apiKey) { showStatus('Please enter your email and API key.', 'err'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Authenticating…';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, key: apiKey }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        showStatus('✓ Authenticated — token stored server-side', 'ok');
+      } catch (e) {
+        showStatus(`Auth failed: ${e.message}`, 'err');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Authenticate via Server';
+      }
+    }
+
+    function showStatus(msg, cls) {
+      const el = document.getElementById('tokenStatus');
+      el.textContent = msg;
+      el.className = `token-status ${cls}`;
+    }
+
+    // ── Drop Zone ──────────────────────────────────────────────────────────
+    const dropzone  = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      handleFiles([...e.dataTransfer.files]);
+    });
+    fileInput.addEventListener('change', () => {
+      handleFiles([...fileInput.files]);
+      fileInput.value = '';
+    });
+
+    async function handleFiles(files) {
+      // Confirm the server has a token before queueing scans
+      try {
+        const res  = await fetch('/api/status');
+        const data = await res.json();
+        if (!data.tokenSet) {
+          showStatus('No token set on the server. Save a token first.', 'err');
+          return;
+        }
+      } catch {
+        showStatus('Cannot reach the server at localhost. Is it running?', 'err');
+        return;
+      }
+      files.forEach(f => processFile(f));
+    }
+
+    // ── Process a single file ──────────────────────────────────────────────
+    async function processFile(file) {
+      const card = createCard(file.name);
+      setLoading(card, true);
+
+      try {
+        const sandbox  = document.getElementById('sandboxCheck').checked;
+        const formData = new FormData();
+        formData.append('image',   file, file.name);
+        formData.append('sandbox', String(sandbox));
+
+        const res = await fetch('/api/detect', { method: 'POST', body: formData });
+
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody?.error || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        renderResult(card, file, data);
+      } catch (e) {
+        renderError(card, e.message);
+      }
+    }
+
+    // ── Card factory ───────────────────────────────────────────────────────
+    function createCard(filename) {
+      const area = document.getElementById('resultsArea');
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="result-header">
+          <span class="result-filename">${escHtml(filename)}</span>
+          <span class="badge badge-loading" id="badge-${escId(filename)}">Scanning…</span>
+        </div>
+        <div class="result-body" id="body-${escId(filename)}">
+          <div class="spinner"></div>
+        </div>`;
+      area.prepend(card);
+      return card;
+    }
+
+    function setLoading(card, on) {
+      const body = card.querySelector('.result-body');
+      if (on) body.innerHTML = '<div class="spinner"></div>';
+    }
+
+    // ── Render result ──────────────────────────────────────────────────────
+    function renderResult(card, file, data) {
+      const summary = data.summary || {};
+      const result  = data.result  || {};
+      const imgInfo = data.imageInfo || {};
+
+      const aiPct    = +(summary.ai    ?? 0).toFixed(1);
+      const humanPct = +(summary.human ?? (100 - aiPct)).toFixed(1);
+
+      // Badge
+      const badge = card.querySelector('.badge');
+      badge.className = 'badge';
+      if (aiPct >= 70)      { badge.classList.add('badge-ai');    badge.textContent = 'AI-Generated'; }
+      else if (aiPct >= 20) { badge.classList.add('badge-mixed'); badge.textContent = 'Mixed'; }
+      else                  { badge.classList.add('badge-human'); badge.textContent = 'Human-Made'; }
+
+      // Body
+      const body = card.querySelector('.result-body');
+
+      // Build image + overlay canvas
+      const imgURL    = URL.createObjectURL(file);
+      const imgEl     = new Image();
+      imgEl.onload = () => {
+        const w = imgInfo.width  || imgEl.naturalWidth;
+        const h = imgInfo.height || imgEl.naturalHeight;
+
+        // Base canvas (image)
+        const baseCanvas  = document.createElement('canvas');
+        baseCanvas.width  = w;
+        baseCanvas.height = h;
+        const bCtx = baseCanvas.getContext('2d');
+        bCtx.drawImage(imgEl, 0, 0, w, h);
+
+        // Overlay canvas
+        const overlayCanvas  = document.createElement('canvas');
+        overlayCanvas.width  = w;
+        overlayCanvas.height = h;
+        const oCtx = overlayCanvas.getContext('2d');
+
+        // Decode RLE mask and paint overlay
+        if (result.starts && result.lengths) {
+          const mask = decodeRLE(result.starts, result.lengths, w * h);
+          const imgData = oCtx.createImageData(w, h);
+          const d = imgData.data;
+          for (let i = 0; i < mask.length; i++) {
+            if (mask[i] === 1) {
+              d[i * 4]     = 239;  // R
+              d[i * 4 + 1] = 68;   // G
+              d[i * 4 + 2] = 68;   // B
+              d[i * 4 + 3] = 140;  // A (~55% opacity)
+            }
+          }
+          oCtx.putImageData(imgData, 0, 0);
+        }
+
+        // Composite display canvas
+        const display  = document.createElement('canvas');
+        display.width  = w;
+        display.height = h;
+        display.style.maxWidth  = '100%';
+        display.style.maxHeight = '420px';
+        display.style.objectFit = 'contain';
+        const dCtx = display.getContext('2d');
+        dCtx.drawImage(baseCanvas, 0, 0);
+        dCtx.drawImage(overlayCanvas, 0, 0);
+
+        // Toggle overlay
+        const toggleLabel = document.createElement('label');
+        toggleLabel.className = 'toggle-overlay';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = true;
+        chk.addEventListener('change', () => {
+          dCtx.clearRect(0, 0, w, h);
+          dCtx.drawImage(baseCanvas, 0, 0);
+          if (chk.checked) dCtx.drawImage(overlayCanvas, 0, 0);
+        });
+        toggleLabel.appendChild(chk);
+        toggleLabel.appendChild(document.createTextNode(' Show AI overlay'));
+
+        const container = document.createElement('div');
+        container.className = 'canvas-container';
+        container.appendChild(display);
+
+        body.innerHTML = '';
+        body.appendChild(container);
+        body.appendChild(toggleLabel);
+
+        // Summary bars
+        const sumSec = document.createElement('div');
+        sumSec.className = 'summary-section';
+        sumSec.innerHTML = `
+          <h3>Pixel Analysis</h3>
+          <div class="bar-row">
+            <span class="bar-label">AI-generated</span>
+            <div class="bar-track"><div class="bar-fill ai" style="width:${aiPct}%"></div></div>
+            <span class="bar-pct ai">${aiPct}%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Human-made</span>
+            <div class="bar-track"><div class="bar-fill human" style="width:${humanPct}%"></div></div>
+            <span class="bar-pct human">${humanPct}%</span>
+          </div>`;
+        body.appendChild(sumSec);
+
+        // Legend
+        const legend = document.createElement('div');
+        legend.className = 'legend';
+        legend.innerHTML = `
+          <span class="legend-item"><span class="legend-dot ai"></span>AI-detected region</span>
+          <span class="legend-item"><span class="legend-dot human"></span>Human / undetected</span>`;
+        body.appendChild(legend);
+
+        // Meta
+        if (data.scannedDocument) {
+          const sd = data.scannedDocument;
+          const meta = document.createElement('p');
+          meta.className = 'meta-row';
+          meta.textContent = `Scan ID: ${sd.scanId || '—'}  ·  Credits used: ${sd.credits ?? '—'}  ·  ${w}×${h} px`;
+          body.appendChild(meta);
+        }
+
+        URL.revokeObjectURL(imgURL);
+      };
+      imgEl.src = imgURL;
+    }
+
+    function renderError(card, msg) {
+      const badge = card.querySelector('.badge');
+      badge.className = 'badge badge-error';
+      badge.textContent = 'Error';
+      const body = card.querySelector('.result-body');
+      body.innerHTML = `<p class="error-msg">⚠ ${escHtml(msg)}</p>`;
+    }
+
+    // ── RLE Decoder ────────────────────────────────────────────────────────
+    // Decodes Copyleaks RLE format: starts[] = pixel indices, lengths[] = run lengths
+    // Returns Uint8Array where 1 = AI pixel
+    function decodeRLE(starts, lengths, totalPixels) {
+      const mask = new Uint8Array(totalPixels);
+      for (let i = 0; i < starts.length; i++) {
+        const s = starts[i];
+        const l = lengths[i];
+        for (let j = 0; j < l; j++) {
+          if (s + j < totalPixels) mask[s + j] = 1;
+        }
+      }
+      return mask;
+    }
+
+    // ── Utilities ──────────────────────────────────────────────────────────
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Make a stable ID from filename (strip special chars)
+    const _idMap = new Map();
+    function escId(name) {
+      if (!_idMap.has(name)) _idMap.set(name, `f${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      return _idMap.get(name);
+    }
+  </script>
+</body>
+</html>

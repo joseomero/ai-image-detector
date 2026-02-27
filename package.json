@@ -1,0 +1,16 @@
+{
+  "name": "ai-image-detector",
+  "version": "1.0.0",
+  "description": "Copyleaks AI Image Detection — proxy server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "express": "^4.21.2",
+    "form-data": "^4.0.1",
+    "multer": "^1.4.5-lts.1"
+  }
+}
