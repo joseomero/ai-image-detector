@@ -304,6 +304,81 @@
     }
 
     .toggle-overlay input { accent-color: #6c63ff; cursor: pointer; }
+
+    /* ── History ── */
+    .history-section {
+      width: 100%;
+      max-width: 780px;
+      margin-top: 48px;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .history-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #c0c0d8;
+    }
+
+    .history-empty {
+      text-align: center;
+      color: #555;
+      font-size: 0.88rem;
+      padding: 32px 0;
+      border: 1px solid #2a2a38;
+      border-radius: 12px;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+
+    .history-table th {
+      text-align: left;
+      color: #666;
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 0 14px 10px;
+      border-bottom: 1px solid #2a2a38;
+    }
+
+    .history-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid #1e1e2a;
+      color: #c0c0d8;
+      vertical-align: middle;
+    }
+
+    .history-table tr:last-child td { border-bottom: none; }
+    .history-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .history-table .filename-cell {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-table .pct-ai    { color: #ef4444; font-weight: 600; }
+    .history-table .pct-human { color: #22c55e; font-weight: 600; }
+
+    .btn-refresh {
+      background: #2a2a38;
+      color: #aaa;
+      font-size: 0.8rem;
+      padding: 6px 14px;
+    }
+
+    .btn-refresh:hover { background: #33334a; color: #e8e8f0; }
   </style>
 </head>
 <body>
@@ -329,6 +404,15 @@
 
   <!-- Results -->
   <div class="results-area" id="resultsArea"></div>
+
+  <!-- History -->
+  <section class="history-section">
+    <div class="history-header">
+      <h2>Scan History</h2>
+      <button type="button" class="btn-refresh" onclick="loadHistory()">Refresh</button>
+    </div>
+    <div id="historyBody"></div>
+  </section>
 
   <script>
 
@@ -560,6 +644,50 @@
       if (!_idMap.has(name)) _idMap.set(name, `f${Date.now()}-${Math.random().toString(36).slice(2)}`);
       return _idMap.get(name);
     }
+
+    // ── Scan History ───────────────────────────────────────────────────────
+    async function loadHistory() {
+      const container = document.getElementById('historyBody');
+      try {
+        const res  = await fetch('/api/history');
+        const rows = await res.json();
+
+        if (!rows.length) {
+          container.innerHTML = '<p class="history-empty">No scans yet. Drop an image above to get started.</p>';
+          return;
+        }
+
+        const fmt = d => new Date(d).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+        container.innerHTML = `
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>AI %</th>
+                <th>Human %</th>
+                <th>Dimensions</th>
+                <th>Mode</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td class="filename-cell" title="${escHtml(r.filename)}">${escHtml(r.filename)}</td>
+                  <td class="pct-ai">${parseFloat(r.ai_pct).toFixed(1)}%</td>
+                  <td class="pct-human">${parseFloat(r.human_pct).toFixed(1)}%</td>
+                  <td>${r.width && r.height ? `${r.width}×${r.height}` : '—'}</td>
+                  <td>${r.sandbox ? '<span class="tag-sandbox">sandbox</span>' : 'live'}</td>
+                  <td>${fmt(r.created_at)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>`;
+      } catch (e) {
+        container.innerHTML = `<p class="history-empty">Could not load history: ${escHtml(e.message)}</p>`;
+      }
+    }
+    loadHistory();
   </script>
 </body>
 </html>
