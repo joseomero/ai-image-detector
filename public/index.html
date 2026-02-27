@@ -42,70 +42,32 @@
       margin-bottom: 28px;
     }
 
-    /* ── Auth Tabs ── */
-    .auth-tabs {
+    /* ── Status indicator ── */
+    .status-row {
       display: flex;
-      gap: 6px;
-      margin-bottom: 20px;
-      background: #0f0f13;
-      border-radius: 8px;
-      padding: 4px;
-    }
-
-    .tab-btn {
-      flex: 1;
-      background: transparent;
-      color: #666;
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 0.84rem;
-    }
-
-    .tab-btn.active {
-      background: #2a2a38;
-      color: #e8e8f0;
-    }
-
-    .tab-btn:hover:not(.active) { color: #aaa; }
-
-    .auth-card h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 18px;
-      color: #c0c0d8;
-    }
-
-    .field-row {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 16px;
     }
 
-    .field-row label {
-      font-size: 0.78rem;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-      display: block;
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #444;
     }
 
-    .field-row input {
-      background: #0f0f13;
-      border: 1px solid #2a2a38;
-      border-radius: 8px;
-      color: #e8e8f0;
-      font-size: 0.9rem;
-      padding: 10px 14px;
-      width: 100%;
-      outline: none;
-      transition: border-color 0.2s;
+    .status-dot--ok   { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+    .status-dot--warn { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.5); }
+    .status-dot--err  { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+
+    .status-label {
+      font-size: 0.88rem;
+      color: #aaa;
     }
 
-    .field-row input:focus { border-color: #6c63ff; }
-
-    .sandbox-row {
+.sandbox-row {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -115,8 +77,6 @@
     }
 
     .sandbox-row input[type="checkbox"] { accent-color: #6c63ff; width: 16px; height: 16px; cursor: pointer; }
-    .sandbox-row--spaced { margin-top: 16px; }
-    .tab-panel--hidden { display: none; }
 
     .tag-sandbox {
       background: #2a2a38;
@@ -143,18 +103,7 @@
     .btn-primary { background: #6c63ff; color: #fff; width: 100%; }
     .btn-primary:hover:not(:disabled) { opacity: 0.88; }
 
-    .token-status {
-      margin-top: 12px;
-      font-size: 0.82rem;
-      padding: 8px 12px;
-      border-radius: 8px;
-      display: none;
-    }
-
-    .token-status.ok   { background: #1a2e1a; color: #6fcf6f; display: block; }
-    .token-status.err  { background: #2e1a1a; color: #cf6f6f; display: block; }
-
-    /* ── Drop Zone ── */
+/* ── Drop Zone ── */
     .dropzone {
       width: 100%;
       max-width: 480px;
@@ -386,47 +335,16 @@
   <h1>AI Image Detector</h1>
   <p class="subtitle">Powered by Copyleaks · Detect AI-generated pixels in any image</p>
 
-  <!-- Auth -->
+  <!-- Status + controls -->
   <div class="auth-card">
-    <h2>Server Credentials</h2>
-
-    <!-- Tabs -->
-    <div class="auth-tabs">
-      <button type="button" class="tab-btn active" onclick="switchTab('token')">Paste Token</button>
-      <button type="button" class="tab-btn" onclick="switchTab('login')">Email + API Key</button>
+    <div class="status-row">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Connecting…</span>
     </div>
-
-    <!-- Token tab -->
-    <div id="tab-token" class="tab-panel">
-      <div class="field-row">
-        <div>
-          <label>Bearer Token</label>
-          <input id="tokenInput" type="password" placeholder="Paste your Copyleaks bearer token" />
-        </div>
-      </div>
-      <button type="button" class="btn-primary" id="saveTokenBtn" onclick="saveToken()">Save Token to Server</button>
-    </div>
-
-    <!-- Login tab -->
-    <div id="tab-login" class="tab-panel tab-panel--hidden">
-      <div class="field-row">
-        <div>
-          <label>Email</label>
-          <input id="emailInput" type="email" placeholder="your@email.com" />
-        </div>
-        <div>
-          <label>API Key</label>
-          <input id="apiKeyInput" type="password" placeholder="••••••••••••••••" />
-        </div>
-      </div>
-      <button type="button" class="btn-primary" id="loginBtn" onclick="doLogin()">Authenticate via Server</button>
-    </div>
-
-    <div class="sandbox-row sandbox-row--spaced">
+    <div class="sandbox-row">
       <input type="checkbox" id="sandboxCheck" checked />
       <label for="sandboxCheck">Sandbox mode <span class="tag-sandbox">free · mock results</span></label>
     </div>
-    <div class="token-status" id="tokenStatus"></div>
   </div>
 
   <!-- Drop zone -->
@@ -441,82 +359,29 @@
   <div class="results-area" id="resultsArea"></div>
 
   <script>
-    // ── Tab switching ──────────────────────────────────────────────────────
-    function switchTab(tab) {
-      document.getElementById('tab-token').classList.toggle('tab-panel--hidden', tab !== 'token');
-      document.getElementById('tab-login').classList.toggle('tab-panel--hidden', tab !== 'login');
-      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-        btn.classList.toggle('active', (i === 0 && tab === 'token') || (i === 1 && tab === 'login'));
-      });
-    }
-
-    // ── Check server token status on load ─────────────────────────────────
+    // ── Connection status ──────────────────────────────────────────────────
     async function checkServerStatus() {
+      const dot   = document.getElementById('statusDot');
+      const label = document.getElementById('statusLabel');
       try {
         const res  = await fetch('/api/status');
         const data = await res.json();
-        if (data.tokenSet) showStatus('✓ Server token ready — you can scan images', 'ok');
-      } catch { /* server not running yet */ }
+        if (data.authenticated) {
+          dot.className   = 'status-dot status-dot--ok';
+          label.textContent = 'Connected to Copyleaks';
+        } else if (data.configured) {
+          dot.className   = 'status-dot status-dot--warn';
+          label.textContent = 'Credentials set — authenticating…';
+        } else {
+          dot.className   = 'status-dot status-dot--err';
+          label.textContent = 'Not configured — set COPYLEAKS_EMAIL and COPYLEAKS_API_KEY env vars';
+        }
+      } catch {
+        dot.className   = 'status-dot status-dot--err';
+        label.textContent = 'Cannot reach server';
+      }
     }
     checkServerStatus();
-
-    // ── Save a pre-obtained bearer token to the server ─────────────────────
-    async function saveToken() {
-      const token = document.getElementById('tokenInput').value.trim();
-      const btn   = document.getElementById('saveTokenBtn');
-      if (!token) { showStatus('Please paste a bearer token.', 'err'); return; }
-
-      btn.disabled = true;
-      btn.textContent = 'Saving…';
-      try {
-        const res = await fetch('/api/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-        document.getElementById('tokenInput').value = '';
-        showStatus('✓ Token stored server-side — ready to scan', 'ok');
-      } catch (e) {
-        showStatus(`Failed: ${e.message}`, 'err');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save Token to Server';
-      }
-    }
-
-    // ── Authenticate via server (email + key) ─────────────────────────────
-    async function doLogin() {
-      const email  = document.getElementById('emailInput').value.trim();
-      const apiKey = document.getElementById('apiKeyInput').value.trim();
-      const btn    = document.getElementById('loginBtn');
-      if (!email || !apiKey) { showStatus('Please enter your email and API key.', 'err'); return; }
-
-      btn.disabled = true;
-      btn.textContent = 'Authenticating…';
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, key: apiKey }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-        showStatus('✓ Authenticated — token stored server-side', 'ok');
-      } catch (e) {
-        showStatus(`Auth failed: ${e.message}`, 'err');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Authenticate via Server';
-      }
-    }
-
-    function showStatus(msg, cls) {
-      const el = document.getElementById('tokenStatus');
-      el.textContent = msg;
-      el.className = `token-status ${cls}`;
-    }
 
     // ── Drop Zone ──────────────────────────────────────────────────────────
     const dropzone  = document.getElementById('dropzone');
@@ -535,16 +400,17 @@
     });
 
     async function handleFiles(files) {
-      // Confirm the server has a token before queueing scans
       try {
         const res  = await fetch('/api/status');
         const data = await res.json();
-        if (!data.tokenSet) {
-          showStatus('No token set on the server. Save a token first.', 'err');
+        if (!data.authenticated) {
+          document.getElementById('statusDot').className   = 'status-dot status-dot--err';
+          document.getElementById('statusLabel').textContent = 'Not authenticated — check env vars on Railway';
           return;
         }
       } catch {
-        showStatus('Cannot reach the server at localhost. Is it running?', 'err');
+        document.getElementById('statusDot').className   = 'status-dot status-dot--err';
+        document.getElementById('statusLabel').textContent = 'Cannot reach server';
         return;
       }
       files.forEach(f => processFile(f));
