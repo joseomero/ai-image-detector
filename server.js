@@ -14,7 +14,7 @@ let storedToken = process.env.COPYLEAKS_TOKEN || null;
 app.use(express.json());
 
 // Serve the frontend
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ── POST /api/token ────────────────────────────────────────────────────────
 // Accept a pre-obtained Copyleaks bearer token and store it server-side.
